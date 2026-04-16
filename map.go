@@ -15,7 +15,6 @@ type Version struct {
 	NodeID  string
 }
 
-// isNewerThan returns true if v is strictly newer than other.
 func (v Version) isNewerThan(other Version) bool {
 	if v.Counter != other.Counter {
 		return v.Counter > other.Counter
@@ -60,7 +59,6 @@ func (n *CRDTMapNode) Start(ctx context.Context) error {
 	return nil
 }
 
-// antiEntropy periodically broadcasts the full state to all peers.
 func (n *CRDTMapNode) antiEntropy(ctx context.Context) {
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
@@ -80,8 +78,6 @@ func (n *CRDTMapNode) antiEntropy(ctx context.Context) {
 	}
 }
 
-// nextVersion increments the local counter and returns a fresh Version.
-// Caller must hold mu (write lock).
 func (n *CRDTMapNode) nextVersion() Version {
 	n.counter++
 	return Version{Counter: n.counter, NodeID: n.ID()}
@@ -99,7 +95,6 @@ func (n *CRDTMapNode) Put(k, v string) {
 }
 
 // Get returns the current visible value for key k.
-// Returns ("", false) for missing or tombstoned keys.
 func (n *CRDTMapNode) Get(k string) (string, bool) {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
@@ -110,7 +105,7 @@ func (n *CRDTMapNode) Get(k string) (string, bool) {
 	return e.Value, true
 }
 
-// Delete marks the key as removed via a tombstone with a fresh version.
+// Delete marks the key as removed via a tombstone.
 func (n *CRDTMapNode) Delete(k string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -120,7 +115,7 @@ func (n *CRDTMapNode) Delete(k string) {
 	}
 }
 
-// Merge joins local state with a remote state snapshot using LWW per key.
+// Merge joins local state with a remote state snapshot.
 func (n *CRDTMapNode) Merge(remote MapState) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -132,7 +127,7 @@ func (n *CRDTMapNode) Merge(remote MapState) {
 	}
 }
 
-// State returns a deep copy of the full CRDT state (including tombstones).
+// State returns a copy of the full CRDT state.
 func (n *CRDTMapNode) State() MapState {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
@@ -156,7 +151,7 @@ func (n *CRDTMapNode) ToMap() map[string]string {
 	return result
 }
 
-// Receive applies remote state snapshots arriving via the network.
+// Receive applies remote state snapshots.
 func (n *CRDTMapNode) Receive(msg *hive.Message) error {
 	if payload, ok := msg.Payload.(MapState); ok {
 		n.Merge(payload)
